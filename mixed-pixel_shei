@@ -1,0 +1,90 @@
+#Author: Georg Kodl, St Andrews University
+#The Code was run on RStudio version 2022.12.0+353 and Windows 11 machine
+#Uploaded 22/01/2024
+
+#The Code calculates the Shannon Evenness Index (SHEI) 
+#for a land cover map and various grid sizes.
+#It provides information about pixel mixture for different spatial resolutions. 
+
+#© This code is published under MIT License: 
+#https://github.com/georg-kodl/erosion-scale/blob/main/License
+
+#Contacts:
+#  email: gk66@st-andrews.ac.uk
+#  web: https://geokodl.org/
+#  LinkedIn: https://www.linkedin.com/in/georg-kodl-92b2a2153/
+
+#____________________________________________________________________________#
+
+#Load Libraries
+library(grid)
+library(terra)
+library(raster)
+library(rgdal)
+library(sp)
+library(dplyr)
+library(tidyverse)
+library(landscapemetrics)
+
+#Load Land Cover Map
+setwd("C:/Users/...")
+c_uav <- brick("as_lc.tif")
+
+#Load Grid (same projection and dimension as land cover map)
+setwd("C:/Users/...")
+
+g_150 <- readOGR("as_g150.shp")
+g_100 <- readOGR("as_g100.shp")
+g_50 <- readOGR("as_g50.shp")
+g_30 <- readOGR("as_g30.shp")
+g_20 <- readOGR("as_g20.shp")
+g_10 <- readOGR("as_g10.shp")
+g_5 <- readOGR("as_g5.shp")
+g_3 <- readOGR("as_g3.shp")
+g_1 <- readOGR("as_g1.shp")
+g_05 <- readOGR("as_g05.shp")
+
+
+#Assign outside land cover map pixel to NA
+#fun <- function(x){x/(x>0)}
+#c <- calc(c_uav, fun)
+
+c <- c_uav
+
+#Create List with different Grid sizes 
+#it is recommended processing 0.5m & 1m grid extra due to long processing time
+l <- list(g_150, g_100, g_50, g_30, g_20, g_10, g_5, g_3, g_1, g_05)
+names(l) <- c(150, 100, 50, 30, 20, 10, 5, 3, 1, 0.5)
+
+#Calculate SHEI
+dfi <- data.frame()                                     #create dataframe
+
+for (i in 1:length(l)){                                 #for-loop to calc SHEI through grid list
+  g <- l[[i]]                                           #assign grid to variable "g"
+  for (s in g$id) {                                     #for-loop for each cell in grid
+    cv <- crop(c, g[s,])                                #crop land cover map with selected cell
+    if(any(is.na(as.data.frame(cv$layer)))==T){next}    #if NA present move to next cell
+    r <- lsm_l_shei(cv)                                 #calculate SHEI for cell assign to "r"
+    r['id'] <- g$id[s]                                  #add ID of cell to the calc SHEI value
+    r$grid = names(l)[i]                                #add name of grid size used 
+    dfi = rbind(dfi, r)}}                               #bind together in the dataframe
+
+#Rename and Clean Columns
+names(dfi) <- c("layer", "level", "class", "id", "metric", "shei", "grid")
+dfi <- dfi %>% select(-id ,-layer, -level, -class, -metric)
+dfi
+
+m_shei <- dfi
+
+#Assign NA to 0 (If only one land cover is present, one get NA from SHEI calc, therefore assign 0)
+m_shei[is.na(m_shei)] <- 0
+
+#Get Mean
+m_shei <- aggregate(m_shei$shei, list(m_shei$grid), FUN=mean)
+names(m_shei) <- c("grid", "shei")
+m_shei
+
+#Write output to CSV
+write.csv(m_shei, "C:/Users/.../shei_as_mean.csv", row.names = F)
+
+
