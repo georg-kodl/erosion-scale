@@ -1,0 +1,100 @@
+#Author: Georg Kodl, St Andrews University
+#The Code was run on RStudio version 2022.12.0+353 and Windows 11 machine
+#Uploaded 22/01/2024
+
+#The Code plots the Probability Density Function of patch sizes
+#for the Barren and Shrub class, for sites surveyed in Iceland 2021.
+#csv file containing patch sizes used for the study are found in the same Github folder 
+#--> https://github.com/georg-kodl/erosion-scale/blob/main/patchsize_eroshr_ice21.csv
+
+#© This code is published under MIT License: 
+#https://github.com/georg-kodl/erosion-scale/blob/main/License
+
+#Contacts:
+#  email: gk66@st-andrews.ac.uk
+#  web: https://geokodl.org/
+#  LinkedIn: https://www.linkedin.com/in/georg-kodl-92b2a2153/
+
+#_______________________Calculate Patch Sizes_________________________________#
+
+#Load Libraries
+library(landscapemetrics)
+library(raster)
+library(landscapetools)
+library(dplyr)  
+library(scales)
+library(ggplot2)
+library(rgdal)
+
+#Load Land Cover Maps
+c_s1 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/sval1_fs2.tif")
+c_s3 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/sval3_fs2.tif")
+c_s6 <- brick("G:/QGIS_scale/data/lc_maj-filt_square/sval6_fs2.tif")
+c_s7 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/sval7_fs2.tif")
+c_s8 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/sval8_fs2.tif")
+c_s9 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/sval9_fs2.tif")
+c_re <- brick("D:/QGIS_scale/data/lc_maj-filt_square/reveg_fs2.tif")
+c_g1 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/gs1_fs2.tif")
+c_g2 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/gs2_fs2.tif")
+c_g3 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/gs3_fs2.tif")
+c_g4 <- brick("D:/QGIS_scale/data/lc_maj-filt_square/gs4_fs2.tif")
+c_as <- brick("D:/PhD/scale-study/land-cover-maps/as_lc.tif")
+
+
+#Calculate Patch Sizes 
+b <- lsm_p_area(c_as, directions = 8)
+b <- b %>% mutate(sitename = "as") %>% select(-c(layer, level, id, metric))
+b$value <- b$value*10000
+
+#Subset Barren and Shrub class
+b1 <- subset(b, class == 1)
+b3 <- subset(b, class == 3)
+
+#Bind all Barren and Shrub class values
+patches_ero <- rbind(a1, s1, d1, f1, g1, h1, j1, k1, l1, c1, v1, b1)
+patches_shr <- rbind(a3, s3, d3, f3, g3, h3, j3, k3, l3, c3, v3, b3)
+
+#Save each patch size dataframe Barren and Shrub
+write.csv(patches_ero, "C:/Users/..../patchsize_shr_ice21.csv", row.names=FALSE)
+
+#_____________________Plot Probability Density Function____________________#
+
+#Read csv file, where Barren and Shrub patch sizes are combined. Barren class was further divided into areas with low (<=6 %) and high Barren land (>10 %).  
+freq <- read.csv("C:/Users/.../patchsize_eroshr_ice21.csv", header = T)
+
+
+#Plot results of PDF
+#add lines for satellite patch resolution
+v.line <- c(0.25,9,100,900)
+#Plot
+ggplot(freq, aes(x = value, colour = Type, group=Type)) +          
+  #  geom_histogram(binwidth = 0.1, colour = "#8B5A00", fill = "#CD8500") + # Changing the binwidth and colours
+  geom_density(size=0.9, bw=0.15) +
+  theme_bw() +                                                      
+  #  ylab("Probability\n") +                                                   
+  #  xlab("\nPatch size") +
+  scale_x_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = trans_format("log10", math_format(10^.x))) +
+  scale_y_continuous(trans = log10_trans(),
+                     breaks = trans_breaks("log10", function(x) 10^x),
+                     labels = trans_format("log10", math_format(10^.x))) +
+  scale_color_manual(values=c("#d9622b","#622bd9", "#21aa4c")) +
+  coord_cartesian(ylim=c(10^-5,1)) +
+  geom_vline(xintercept = v.line, linetype="dashed", color="black") + 
+  labs(x = bquote("\nPatch Size [m²]"), y = bquote("Probability\n")) + 
+  #  labs(title = "Probability Distribution Function", title) +
+  theme(axis.text = element_text(size = 12),                         
+        axis.title.x = element_text(size = 14, face = "plain"),
+        axis.title.y = element_text(size = 14, face = "plain"),
+        plot.title = element_text(size=16, hjust = 0.5),                               
+        plot.margin = unit(c(1,1,1,1), units = , "cm"),
+        legend.position="top") 
+
+
+#Get largest patch
+patchy <- freq %>% group_by(sitename) %>%
+  summarise(patch_size = max(value))
+
+
+
