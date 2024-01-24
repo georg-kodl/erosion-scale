@@ -1,0 +1,61 @@
+#NDVI timeseries Landsat 1984-2022
+
+#Load libraries
+library(ggsignif)
+library(car)
+library(ggpubr)
+library(MASS) 
+library(reshape) 
+library(dplyr)
+library(lubridate)
+
+#Read download NDVI data from GEE for each site and Landsat platform 
+l5 <- read.csv("C:/Users/.../as_l5_ndvi.csv")
+l7 <- read.csv("C:/Users/.../as_l7_ndvi.csv")
+l8 <- read.csv("C:/Users/.../as_l8_ndvi.csv")
+
+TM <- data.frame(x=l5$date,y=l5$undefined)
+ETM <- data.frame(x=l7$date,y=l7$undefined)
+OLI <- data.frame(x=l8$date,y=l8$undefined)
+
+la <- melt(list(TM=TM,ETM=ETM,OLI=OLI), id.vars="x")
+
+#add column and bind all sites
+la['site']='Reveg'
+reveg<-la
+
+#Repeat for every site
+ts_sites <- rbind(as, gs1, gs2, gs3, gs4, sval1, sval3, sval6, sval7, sval8, sval9, reveg)
+unique(ts_sites$site)
+write.csv(ts_sites, "C:/Users/.../ts_ndvi_sites.csv", row.names=FALSE)
+
+#Read CSV file with downloaded and cleaned NDVI data for each site (removed values that were cloud covered or with georeferencing issues)
+ts_sites <- read.csv("C:/Users/.../ts_ndvi_sites.csv")
+
+#Filter by month
+las <- ts_sites %>% 
+  mutate(x = dmy(x)) %>% 
+  filter(month(x) %in% 6:9) %>% 
+  filter(year(x) %in% 1984:2022)
+
+#Filter NA
+lac <- filter(las, value!=0)
+#print(lac)
+#str(lac)
+
+#Exclude values
+lac <- lac[lac$value > 0, ]
+names(lac) <- c("date", "variable","NDVI", "sensor", "Site")
+
+#Set order of sites by increasing barren area levels
+lac$Site = factor(lac$Site, levels=c("As", "Gs3", "Sval1", "Gs1", "Reveg", "Gs4", "Gs2", "Sval9", "Sval8", "Sval3", "Sval7", "Sval6"))
+
+#Plot NDVI timeseries for all sites
+dm <- ggplot(lac, aes(date,	NDVI)) + geom_point(size=1.2) + facet_wrap(~Site, ncol = 3) + #, scales = "free_y") +
+  labs(Date = "Date 1984-2022", y = 'NDVI', ) + labs(title = "Landsat 5/7/8 NDVI Time Series, 1984-2022, Jun-Sep", title) + 
+  theme_bw(base_size = 13) + geom_smooth(colour="#be2596", se = FALSE, size=1.2 ) + 
+  labs(x = bquote("\nDate"), y = bquote("NDVI\n")) + 
+  theme(legend.title = element_text(size=15), legend.text = element_text(size=12), legend.position="top", legend.margin=margin(t = 0, unit='cm'),
+        plot.title = element_text(hjust = 0.5), strip.background = element_rect(colour="black", fill="#EFEFEF")) +
+  coord_cartesian(ylim=c(0.15,0.78)) 
+dm
