@@ -1,4 +1,4 @@
-# RCode & Data for the research study erosion-scale
+# RCode & Data for a research study on soil erosion monitoring
 Kodl et al. 2024 - Arctic tundra shrubification can obscure increasing levels of soil erosion in NDVI assessments of land cover derived from satellite imagery
 https://doi.org/10.1016/j.rse.2023.113935
 
