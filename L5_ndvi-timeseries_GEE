@@ -1,4 +1,4 @@
-//Landsat 5 NDVI time-series
+//Landsat 5 NDVI Timeseries
 
 var region = "input ROI"
 
@@ -63,3 +63,10 @@ var l5_series = ui.Chart.image.seriesByRegion(
 //Print
 print(l5_series);
 print(l5);
+
+//Visualisation
+var composite = l5.qualityMosaic('NDVI').clip(region);
+var ndviParams = {min: 0, max: 1, palette: ['red', 'yellow', 'green']};
+
+Map.addLayer(composite.select('NDVI'), ndviParams, 'NDVI image');
+Map.centerObject(region, 12);
